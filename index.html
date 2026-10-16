@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>純アルコール量計算</title>
+<meta name="description" content="お酒の種類と量を選ぶだけで純アルコール量（g）を計算できるツール。度数と量を直接入力しての計算にも対応。">
+<style>
+/* ============================================================
+   Soft Teal Design トークン
+   ============================================================ */
+:root {
+  --bg:         #F2F6F6;
+  --bg-white:   #FFFFFF;
+  --teal:       #79B8B6;
+  --teal-deep:  #4E9694;
+  --teal-pale:  #D9EAEA;
+  --ink:        #2E3A3A;
+  --ink-soft:   #5D6B6B;
+  --amber:      #E5A63C;
+  --amber-deep: #D19026;
+  --warn:       #C8574B;
+  --line:       #DCE7E7;
+  --r-leaf:     36px 36px 36px 8px;
+  --r-leaf-rev: 8px 36px 36px 36px;
+  --r-card:     20px;
+  --r-pill:     999px;
+  --shadow-soft:  0 8px 28px rgba(78,150,148,.14);
+  --shadow-hover: 0 16px 40px rgba(78,150,148,.22);
+  --font: "Hiragino Kaku Gothic ProN","Hiragino Sans","Noto Sans JP",sans-serif;
+  --ease: cubic-bezier(.22,1,.36,1);
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: var(--font);
+  background: var(--bg);
+  color: var(--ink);
+  line-height: 1.8;
+  letter-spacing: .04em;
+  font-feature-settings: "palt";
+  -webkit-text-size-adjust: 100%;
+}
+button, input, select { font: inherit; color: inherit; }
+.container { max-width: 760px; margin: 0 auto; padding: 0 16px; }
+
+/* ---------- ヘッダー ---------- */
+header { padding: 40px 0 8px; }
+.label {
+  display: inline-block; font-size: 12px; font-weight: 700;
+  color: var(--teal-deep); letter-spacing: .2em; text-transform: uppercase;
+}
+.label::after {
+  content: ""; display: inline-block; width: 32px; height: 2px;
+  background: var(--teal); margin-left: 12px; vertical-align: middle; border-radius: 2px;
+}
+h1 { font-size: clamp(24px, 6vw, 34px); letter-spacing: .12em; line-height: 1.5; margin-top: 8px; }
+h1 .teal { color: var(--teal); }
+.lead { color: var(--ink-soft); font-size: 14px; margin-top: 8px; }
+
+/* ---------- カード ---------- */
+.card {
+  background: var(--bg-white); border-radius: var(--r-leaf);
+  box-shadow: var(--shadow-soft); padding: 28px 24px; margin-top: 24px;
+}
+.card h2 { font-size: 18px; letter-spacing: .1em; margin-bottom: 16px; display: flex; align-items: center; gap: 10px; }
+.card h2 .num {
+  width: 28px; height: 28px; border-radius: 50%; background: var(--teal-pale);
+  color: var(--teal-deep); font-size: 13px; display: inline-flex; align-items: center; justify-content: center; flex: none;
+}
+
+/* ---------- タブ ---------- */
+.tabs { display: flex; gap: 8px; background: var(--teal-pale); padding: 6px; border-radius: var(--r-pill); margin-top: 24px; }
+.tab {
+  flex: 1; border: 0; background: transparent; padding: 10px 8px; border-radius: var(--r-pill);
+  font-weight: 700; font-size: 14px; color: var(--teal-deep); cursor: pointer;
+  transition: background .3s var(--ease), color .3s var(--ease), box-shadow .3s var(--ease);
+}
+.tab[aria-selected="true"] { background: var(--bg-white); color: var(--ink); box-shadow: 0 4px 14px rgba(78,150,148,.18); }
+.panel[hidden] { display: none; }
+
+/* ---------- 選択チップ ---------- */
+.step-title { font-size: 13px; font-weight: 700; color: var(--ink-soft); margin: 20px 0 10px; letter-spacing: .1em; }
+.step-title:first-child { margin-top: 0; }
+.chips { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 10px; }
+.chip {
+  border: 2px solid var(--line); background: var(--bg-white); border-radius: 16px;
+  padding: 10px 12px; text-align: left; cursor: pointer; line-height: 1.4;
+  transition: border-color .25s var(--ease), background .25s var(--ease), transform .25s var(--ease);
+}
+.chip:hover { transform: translateY(-2px); border-color: var(--teal); }
+.chip .name { display: block; font-weight: 700; font-size: 14px; }
+.chip .sub { display: block; font-size: 12px; color: var(--ink-soft); margin-top: 2px; }
+.chip[aria-pressed="true"] { border-color: var(--teal-deep); background: var(--teal-pale); }
+.chip:focus-visible, .tab:focus-visible, .btn:focus-visible, input:focus-visible, .icon-btn:focus-visible {
+  outline: 3px solid var(--amber); outline-offset: 2px;
+}
+
+/* ---------- 入力欄 ---------- */
+.fields { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.field label { display: block; font-size: 13px; font-weight: 700; color: var(--ink-soft); margin-bottom: 6px; }
+.input-wrap { position: relative; }
+.input-wrap input {
+  width: 100%; border: 2px solid var(--line); border-radius: 14px; background: var(--bg);
+  padding: 12px 44px 12px 14px; font-size: 18px; font-weight: 700; outline: none;
+  transition: border-color .25s var(--ease), background .25s var(--ease);
+}
+.input-wrap input:focus { border-color: var(--teal); background: var(--bg-white); }
+.input-wrap .unit { position: absolute; right: 14px; top: 50%; transform: translateY(-50%); color: var(--ink-soft); font-weight: 700; font-size: 14px; pointer-events: none; }
+.adjust { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
+.mini {
+  border: 0; background: var(--teal-pale); color: var(--teal-deep); font-weight: 700; font-size: 12px;
+  padding: 4px 10px; border-radius: var(--r-pill); cursor: pointer;
+}
+.mini:hover { background: var(--teal); color: #fff; }
+.count-row { display: flex; align-items: center; gap: 12px; margin-top: 14px; }
+.count-row .lbl { font-size: 13px; font-weight: 700; color: var(--ink-soft); }
+.stepper { display: inline-flex; align-items: center; background: var(--bg); border-radius: var(--r-pill); border: 2px solid var(--line); }
+.stepper button { border: 0; background: transparent; width: 38px; height: 38px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; color: var(--teal-deep); }
+.stepper button svg { width: 14px; height: 14px; }
+.stepper output { min-width: 36px; text-align: center; font-weight: 700; font-size: 16px; }
+
+/* ---------- 結果 ---------- */
+.result {
+  margin-top: 22px; background: linear-gradient(135deg, var(--teal) 0%, var(--teal-deep) 100%);
+  color: #fff; border-radius: var(--r-leaf-rev); padding: 22px 22px 18px;
+}
+.result .cap { font-size: 12px; letter-spacing: .2em; opacity: .9; font-weight: 700; }
+.result .big { font-size: clamp(38px, 11vw, 54px); font-weight: 800; line-height: 1.2; letter-spacing: .02em; font-variant-numeric: tabular-nums; }
+.result .big small { font-size: 20px; margin-left: 4px; }
+.result .meta { font-size: 13px; opacity: .95; margin-top: 4px; }
+.result .formula { font-size: 12px; opacity: .85; margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,.3); word-break: break-all; }
+.bump { animation: bump .45s var(--ease); }
+@keyframes bump { 0% { transform: scale(.96); opacity: .5; } 100% { transform: none; opacity: 1; } }
+
+/* ---------- ボタン ---------- */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 10px;
+  font-weight: 700; font-size: 15px; padding: 13px 26px; border-radius: var(--r-pill); border: 0; cursor: pointer;
+  transition: transform .3s var(--ease), box-shadow .3s var(--ease), background .3s;
+}
+.btn:hover { transform: translateY(-2px); box-shadow: var(--shadow-hover); }
+.btn svg { width: 16px; height: 16px; }
+.btn-amber { background: var(--amber); color: #fff; box-shadow: var(--shadow-soft); }
+.btn-amber:hover { background: var(--amber-deep); }
+.btn-ghost { background: transparent; color: var(--ink-soft); border: 2px solid var(--line); }
+.btn-ghost:hover { box-shadow: none; border-color: var(--teal); color: var(--teal-deep); }
+.btn[disabled] { opacity: .45; pointer-events: none; }
+.actions { display: flex; gap: 10px; margin-top: 16px; flex-wrap: wrap; }
+.actions .btn-amber { flex: 1; min-width: 200px; }
+
+/* ---------- 合計リスト ---------- */
+.list { list-style: none; }
+.list li {
+  display: flex; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--line);
+  animation: slidein .4s var(--ease);
+}
+@keyframes slidein { from { opacity: 0; transform: translateX(-12px); } to { opacity: 1; transform: none; } }
+.list .info { flex: 1; min-width: 0; }
+.list .info b { display: block; font-size: 14px; }
+.list .info span { display: block; font-size: 12px; color: var(--ink-soft); }
+.list .g { font-weight: 800; font-size: 16px; color: var(--teal-deep); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.icon-btn { border: 0; background: var(--bg); width: 32px; height: 32px; border-radius: 50%; cursor: pointer; color: var(--ink-soft); display: inline-flex; align-items: center; justify-content: center; flex: none; }
+.icon-btn:hover { background: var(--teal-pale); color: var(--warn); }
+.icon-btn svg { width: 14px; height: 14px; }
+.empty { color: var(--ink-soft); font-size: 14px; text-align: center; padding: 18px 0 6px; }
+
+.total-box { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-top: 16px; flex-wrap: wrap; }
+.total-box .t-label { font-size: 13px; font-weight: 700; color: var(--ink-soft); letter-spacing: .1em; }
+.total-box .t-val { font-size: 34px; font-weight: 800; color: var(--ink); font-variant-numeric: tabular-nums; }
+.total-box .t-val small { font-size: 16px; margin-left: 2px; }
+
+/* ---------- 目安メーター ---------- */
+.gauge { margin-top: 16px; }
+.gauge .bar { position: relative; height: 12px; border-radius: var(--r-pill); background: var(--teal-pale); overflow: hidden; }
+.gauge .fill { position: absolute; inset: 0 auto 0 0; width: 0; border-radius: var(--r-pill); background: var(--teal); transition: width .6s var(--ease), background .4s; }
+.gauge .fill.mid { background: var(--amber); }
+.gauge .fill.high { background: var(--warn); }
+.gauge .ticks { position: relative; height: 20px; font-size: 11px; color: var(--ink-soft); margin-top: 4px; }
+.gauge .ticks span { position: absolute; transform: translateX(-50%); white-space: nowrap; }
+.gauge .ticks span:first-child { transform: none; }
+.sex { display: inline-flex; gap: 4px; background: var(--bg); padding: 4px; border-radius: var(--r-pill); }
+.sex button { border: 0; background: transparent; padding: 4px 14px; border-radius: var(--r-pill); font-size: 13px; font-weight: 700; color: var(--ink-soft); cursor: pointer; }
+.sex button[aria-pressed="true"] { background: var(--bg-white); color: var(--teal-deep); box-shadow: 0 2px 8px rgba(78,150,148,.15); }
+.verdict { margin-top: 10px; font-size: 14px; padding: 12px 14px; border-radius: 14px; background: var(--bg); }
+.verdict b { color: var(--teal-deep); }
+.verdict.mid b { color: var(--amber-deep); }
+.verdict.high b { color: var(--warn); }
+.decomp { margin-top: 14px; font-size: 13px; color: var(--ink-soft); display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.decomp input { width: 76px; border: 2px solid var(--line); border-radius: 10px; padding: 4px 8px; background: var(--bg); font-weight: 700; text-align: right; }
+.decomp strong { color: var(--ink); }
+
+/* ---------- 注記 ---------- */
+.notes { font-size: 12px; color: var(--ink-soft); margin: 28px 0 48px; line-height: 1.9; }
+.notes p + p { margin-top: 6px; }
+
+@media (max-width: 480px) {
+  .card { padding: 22px 16px; border-radius: 28px 28px 28px 8px; }
+  .fields { grid-template-columns: 1fr; }
+  .chips { grid-template-columns: repeat(2, 1fr); }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <span class="label">Alcohol Calculator</span>
+    <h1>純アルコール量<span class="teal">計算</span></h1>
+    <p class="lead">お酒の種類と量を選ぶだけで、含まれる純アルコールの量（グラム）がわかります。</p>
+  </header>
+
+  <section class="card" aria-labelledby="calc-title">
+    <h2 id="calc-title"><span class="num">1</span>1杯分を計算する</h2>
+
+    <div class="tabs" role="tablist" aria-label="入力方法">
+      <button class="tab" role="tab" id="tab-select" aria-controls="panel-select" aria-selected="true">種類と量から選ぶ</button>
+      <button class="tab" role="tab" id="tab-manual" aria-controls="panel-manual" aria-selected="false" tabindex="-1">度数と量を入力</button>
+    </div>
+
+    <!-- 選択モード -->
+    <div class="panel" id="panel-select" role="tabpanel" aria-labelledby="tab-select">
+      <p class="step-title" style="margin-top:22px">お酒の種類</p>
+      <div class="chips" id="drink-chips"></div>
+      <p class="step-title">量</p>
+      <div class="chips" id="size-chips"></div>
+      <div class="fields" style="margin-top:14px">
+        <div class="field">
+          <label for="sel-abv">度数（調整できます）</label>
+          <div class="input-wrap"><input id="sel-abv" type="number" inputmode="decimal" min="0" max="100" step="0.5"><span class="unit">%</span></div>
+        </div>
+        <div class="field">
+          <label for="sel-ml">量（調整できます）</label>
+          <div class="input-wrap"><input id="sel-ml" type="number" inputmode="numeric" min="0" step="10"><span class="unit">ml</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 手入力モード -->
+    <div class="panel" id="panel-manual" role="tabpanel" aria-labelledby="tab-manual" hidden>
+      <div class="fields" style="margin-top:22px">
+        <div class="field">
+          <label for="man-abv">度数</label>
+          <div class="input-wrap"><input id="man-abv" type="number" inputmode="decimal" min="0" max="100" step="0.1" value="5"><span class="unit">%</span></div>
+          <div class="adjust" data-target="man-abv">
+            <button class="mini" data-set="5">5%</button><button class="mini" data-set="9">9%</button>
+            <button class="mini" data-set="15">15%</button><button class="mini" data-set="25">25%</button><button class="mini" data-set="40">40%</button>
+          </div>
+        </div>
+        <div class="field">
+          <label for="man-ml">量</label>
+          <div class="input-wrap"><input id="man-ml" type="number" inputmode="numeric" min="0" step="1" value="350"><span class="unit">ml</span></div>
+          <div class="adjust" data-target="man-ml">
+            <button class="mini" data-set="180">180</button><button class="mini" data-set="350">350</button>
+            <button class="mini" data-set="500">500</button><button class="mini" data-set="720">720</button>
+          </div>
+        </div>
+      </div>
+      <div class="field" style="margin-top:14px">
+        <label for="man-name">名前（任意・合計リスト用）</label>
+        <div class="input-wrap"><input id="man-name" type="text" placeholder="例：クラフトビール" style="font-size:15px;font-weight:400;padding-right:14px"></div>
+      </div>
+    </div>
+
+    <div class="count-row">
+      <span class="lbl">杯数</span>
+      <div class="stepper">
+        <button type="button" id="cnt-minus" aria-label="1杯減らす"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 8h10"/></svg></button>
+        <output id="cnt" aria-live="polite">1</output>
+        <button type="button" id="cnt-plus" aria-label="1杯増やす"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 8h10M8 3v10"/></svg></button>
+      </div>
+    </div>
+
+    <div class="result" id="result" aria-live="polite">
+      <div class="cap">純アルコール量</div>
+      <div class="big"><span id="res-g">0</span><small>g</small></div>
+      <div class="meta" id="res-meta">—</div>
+      <div class="formula" id="res-formula">量(ml) × 度数(%) ÷ 100 × 0.8（アルコールの比重）</div>
+    </div>
+
+    <div class="actions">
+      <button class="btn btn-amber" id="add-btn" type="button">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 8h10M8 3v10"/></svg>
+        今日の合計に追加
+      </button>
+    </div>
+  </section>
+
+  <section class="card" aria-labelledby="total-title">
+    <h2 id="total-title"><span class="num">2</span>今日の合計</h2>
+    <ul class="list" id="list"></ul>
+    <p class="empty" id="empty">まだ追加されていません。上で計算して「今日の合計に追加」を押してください。</p>
+
+    <div class="total-box">
+      <span class="t-label">合計</span>
+      <span class="t-val"><span id="total-g">0</span><small>g</small></span>
+    </div>
+
+    <div class="gauge">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap">
+        <span style="font-size:13px;font-weight:700;color:var(--ink-soft)">1日の目安と比べる</span>
+        <div class="sex" role="group" aria-label="性別">
+          <button type="button" data-sex="m" aria-pressed="true">男性</button>
+          <button type="button" data-sex="f" aria-pressed="false">女性</button>
+        </div>
+      </div>
+      <div class="bar" style="margin-top:10px"><div class="fill" id="fill"></div></div>
+      <div class="ticks" id="ticks"></div>
+      <div class="verdict" id="verdict"></div>
+    </div>
+
+    <div class="decomp">
+      <span>体重</span>
+      <input id="weight" type="number" inputmode="numeric" min="20" max="200" value="60" aria-label="体重(kg)">
+      <span>kg で分解にかかる時間の目安：</span><strong id="decomp">—</strong>
+    </div>
+
+    <div class="actions">
+      <button class="btn btn-ghost" id="clear-btn" type="button">合計をリセット</button>
+    </div>
+  </section>
+
+  <div class="notes">
+    <p>計算式：純アルコール量(g) ＝ 量(ml) × 度数(%) ÷ 100 × 0.8。1ドリンク＝純アルコール10gとして換算しています。</p>
+    <p>目安は厚生労働省「健康に配慮した飲酒に関するガイドライン」（2024年）の「生活習慣病のリスクを高める量」（1日あたり男性40g以上・女性20g以上）を参考にしています。安全な量を示すものではありません。</p>
+    <p>分解時間は「体重1kgあたり1時間に約0.1g」という一般的な目安による概算で、体質・体調・性別・年齢で大きく変わります。運転の可否の判断には使わないでください。</p>
+    <p>度数・容量の初期値は一般的な製品の代表値です。お手元の商品の表示に合わせて調整してください。</p>
+  </div>
+</div>
+
+<script>
+// ---------- データ ----------
+// 各酒類の代表的な度数と、よくある容量
+const DRINKS = [
+  { id: "beer",    name: "ビール",          abv: 5,  sizes: [["350ml缶",350],["500ml缶",500],["中ジョッキ",350],["グラス",200],["大瓶",633]] },
+  { id: "happo",   name: "発泡酒・第3",     abv: 5,  sizes: [["350ml缶",350],["500ml缶",500]] },
+  { id: "chuhai",  name: "チューハイ",      abv: 5,  sizes: [["350ml缶",350],["500ml缶",500],["ジョッキ",350]] },
+  { id: "strong",  name: "ストロング系",    abv: 9,  sizes: [["350ml缶",350],["500ml缶",500]] },
+  { id: "highball",name: "ハイボール",      abv: 7,  sizes: [["350ml缶",350],["500ml缶",500],["ジョッキ",350]] },
+  { id: "sake",    name: "日本酒",          abv: 15, sizes: [["1合",180],["お猪口",30],["グラス",120],["4合瓶",720]] },
+  { id: "wine",    name: "ワイン",          abv: 12, sizes: [["グラス",120],["ボトル半分",375],["ボトル",750]] },
+  { id: "shochu",  name: "焼酎（ストレート）", abv: 25, sizes: [["1合",180],["ロック1杯",60],["グラス",100]] },
+  { id: "mizuwari",name: "焼酎の水割り",    abv: 10, sizes: [["グラス",180],["ジョッキ",350]] },
+  { id: "whisky",  name: "ウイスキー",      abv: 40, sizes: [["シングル",30],["ダブル",60]] },
+  { id: "umeshu",  name: "梅酒",            abv: 12, sizes: [["ロック1杯",90],["グラス",120]] },
+  { id: "makgeolli",name: "マッコリ",       abv: 6,  sizes: [["グラス",180],["ボトル",750]] },
+];
+
+// 目安（g/日）
+const LIMIT = { m: 40, f: 20 };
+
+// ---------- 状態 ----------
+const state = {
+  mode: "select",
+  drink: DRINKS[0],
+  sizeIdx: 0,
+  count: 1,
+  sex: "m",
+  list: [],
+};
+
+const $ = (id) => document.getElementById(id);
+const fmt = (n, d = 1) => (Math.round(n * 10 ** d) / 10 ** d).toLocaleString("ja-JP", { maximumFractionDigits: d });
+const calc = (ml, abv) => ml * abv / 100 * 0.8;
+const num = (v) => { const n = parseFloat(v); return Number.isFinite(n) && n >= 0 ? n : 0; };
+
+// ---------- 保存（端末内のみ・失敗しても動く） ----------
+const KEY = "alcohol-calc-v1";
+function save() {
+  try { localStorage.setItem(KEY, JSON.stringify({ list: state.list, sex: state.sex, weight: $("weight").value })); } catch (e) {}
+}
+function load() {
+  try {
+    const d = JSON.parse(localStorage.getItem(KEY) || "null");
+    if (!d) return;
+    if (Array.isArray(d.list)) state.list = d.list;
+    if (d.sex === "m" || d.sex === "f") state.sex = d.sex;
+    if (d.weight) $("weight").value = d.weight;
+  } catch (e) {}
+}
+
+// ---------- 描画 ----------
+function renderDrinks() {
+  const box = $("drink-chips");
+  box.innerHTML = "";
+  DRINKS.forEach((d) => {
+    const b = document.createElement("button");
+    b.type = "button"; b.className = "chip";
+    b.setAttribute("aria-pressed", d === state.drink);
+    b.innerHTML = `<span class="name">${d.name}</span><span class="sub">${d.abv}%前後</span>`;
+    b.onclick = () => { state.drink = d; state.sizeIdx = 0; applyPreset(); renderDrinks(); renderSizes(); update(); };
+    box.appendChild(b);
+  });
+}
+function renderSizes() {
+  const box = $("size-chips");
+  box.innerHTML = "";
+  state.drink.sizes.forEach(([label, ml], i) => {
+    const b = document.createElement("button");
+    b.type = "button"; b.className = "chip";
+    b.setAttribute("aria-pressed", i === state.sizeIdx);
+    b.innerHTML = `<span class="name">${label}</span><span class="sub">${ml}ml</span>`;
+    b.onclick = () => { state.sizeIdx = i; $("sel-ml").value = ml; renderSizes(); update(); };
+    box.appendChild(b);
+  });
+}
+function applyPreset() {
+  $("sel-abv").value = state.drink.abv;
+  $("sel-ml").value = state.drink.sizes[state.sizeIdx][1];
+}
+
+// 現在の1杯分の入力を取得
+function current() {
+  if (state.mode === "select") {
+    const ml = num($("sel-ml").value), abv = Math.min(num($("sel-abv").value), 100);
+    const preset = state.drink.sizes[state.sizeIdx];
+    const sizeLabel = preset && preset[1] === ml ? preset[0] : `${fmt(ml, 0)}ml`;
+    return { name: `${state.drink.name}（${sizeLabel}）`, ml, abv };
+  }
+  const ml = num($("man-ml").value), abv = Math.min(num($("man-abv").value), 100);
+  const name = $("man-name").value.trim() || `お酒 ${fmt(abv)}%`;
+  return { name: `${name}（${fmt(ml, 0)}ml）`, ml, abv };
+}
+
+function update() {
+  const c = current();
+  const g = calc(c.ml, c.abv) * state.count;
+  const el = $("res-g");
+  const next = fmt(g);
+  if (el.textContent !== next) {
+    el.textContent = next;
+    const r = $("result"); r.classList.remove("bump"); void r.offsetWidth; r.classList.add("bump");
+  }
+  $("res-meta").textContent = `${fmt(g / 10)} ドリンク相当　／　${fmt(c.abv)}% × ${fmt(c.ml, 0)}ml × ${state.count}杯`;
+  $("res-formula").textContent = `${fmt(c.ml, 0)}ml × ${fmt(c.abv)}% ÷ 100 × 0.8${state.count > 1 ? ` × ${state.count}杯` : ""} ＝ ${fmt(g)}g`;
+  $("cnt").textContent = state.count;
+  $("cnt-minus").disabled = state.count <= 1;
+  $("add-btn").disabled = g <= 0;
+}
+
+function renderList() {
+  const ul = $("list");
+  ul.innerHTML = "";
+  state.list.forEach((it, i) => {
+    const li = document.createElement("li");
+    li.innerHTML = `<div class="info"><b></b><span></span></div><span class="g">${fmt(it.g)}g</span>
+      <button class="icon-btn" type="button" aria-label="削除"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 4l8 8M12 4l-8 8"/></svg></button>`;
+    li.querySelector("b").textContent = it.name + (it.count > 1 ? ` × ${it.count}杯` : "");
+    li.querySelector(".info span").textContent = `${fmt(it.abv)}% ・ ${fmt(it.ml * it.count, 0)}ml ・ ${fmt(it.g / 10)}ドリンク`;
+    li.querySelector("button").onclick = () => { state.list.splice(i, 1); save(); renderList(); };
+    ul.appendChild(li);
+  });
+  $("empty").hidden = state.list.length > 0;
+  $("clear-btn").disabled = state.list.length === 0;
+
+  const total = state.list.reduce((s, it) => s + it.g, 0);
+  $("total-g").textContent = fmt(total);
+
+  // 目安メーター（目安の2倍を右端とする）
+  const lim = LIMIT[state.sex], max = lim * 2;
+  const fill = $("fill");
+  fill.style.width = Math.min(total / max * 100, 100) + "%";
+  fill.className = "fill" + (total >= lim ? " high" : total >= lim / 2 ? " mid" : "");
+  $("ticks").innerHTML = `<span style="left:0">0g</span><span style="left:25%">${lim / 2}g</span><span style="left:50%">${lim}g</span><span style="left:100%;transform:translateX(-100%)">${max}g</span>`;
+
+  const v = $("verdict");
+  const sexName = state.sex === "m" ? "男性" : "女性";
+  if (total === 0) {
+    v.className = "verdict"; v.innerHTML = `${sexName}の「生活習慣病のリスクを高める量」は1日あたり<b>${lim}g</b>以上です。`;
+  } else if (total >= lim) {
+    v.className = "verdict high"; v.innerHTML = `<b>${fmt(total)}g</b>：${sexName}の「生活習慣病のリスクを高める量」（${lim}g）に達しています。`;
+  } else {
+    v.className = "verdict" + (total >= lim / 2 ? " mid" : "");
+    v.innerHTML = `<b>${fmt(total)}g</b>：${sexName}の目安 ${lim}g まで、あと <b>${fmt(lim - total)}g</b> です。`;
+  }
+
+  // 分解時間（体重×0.1g/時）
+  const w = num($("weight").value);
+  if (total > 0 && w >= 20) {
+    const h = total / (w * 0.1);
+    const hh = Math.floor(h), mm = Math.round((h - hh) * 60);
+    $("decomp").textContent = mm === 60 ? `約${hh + 1}時間` : `約${hh}時間${mm ? mm + "分" : ""}`;
+  } else {
+    $("decomp").textContent = "—";
+  }
+
+  document.querySelectorAll(".sex button").forEach((b) => b.setAttribute("aria-pressed", b.dataset.sex === state.sex));
+}
+
+// ---------- イベント ----------
+function setMode(mode) {
+  state.mode = mode;
+  [["select", "tab-select", "panel-select"], ["manual", "tab-manual", "panel-manual"]].forEach(([m, t, p]) => {
+    const on = m === mode;
+    $(t).setAttribute("aria-selected", on);
+    $(t).tabIndex = on ? 0 : -1;
+    $(p).hidden = !on;
+  });
+  update();
+}
+$("tab-select").onclick = () => setMode("select");
+$("tab-manual").onclick = () => setMode("manual");
+document.querySelector(".tabs").addEventListener("keydown", (e) => {
+  if (e.key !== "ArrowRight" && e.key !== "ArrowLeft") return;
+  const next = state.mode === "select" ? "manual" : "select";
+  setMode(next); $(next === "select" ? "tab-select" : "tab-manual").focus();
+});
+
+["sel-abv", "sel-ml", "man-abv", "man-ml", "man-name"].forEach((id) => $(id).addEventListener("input", () => {
+  // 量を手で変えたら、一致するプリセットだけを選択状態にする
+  if (id === "sel-ml") {
+    state.sizeIdx = state.drink.sizes.findIndex(([, ml]) => ml === num($("sel-ml").value));
+    renderSizes();
+  }
+  update();
+}));
+
+document.querySelectorAll(".adjust").forEach((box) => box.addEventListener("click", (e) => {
+  const b = e.target.closest("[data-set]"); if (!b) return;
+  $(box.dataset.target).value = b.dataset.set; update();
+}));
+
+$("cnt-minus").onclick = () => { if (state.count > 1) { state.count--; update(); } };
+$("cnt-plus").onclick = () => { if (state.count < 99) { state.count++; update(); } };
+
+$("add-btn").onclick = () => {
+  const c = current();
+  const g = calc(c.ml, c.abv) * state.count;
+  if (g <= 0) return;
+  state.list.push({ name: c.name, ml: c.ml, abv: c.abv, count: state.count, g });
+  state.count = 1; update();
+  save(); renderList();
+};
+$("clear-btn").onclick = () => {
+  if (!confirm("今日の合計をリセットしますか？")) return;
+  state.list = []; save(); renderList();
+};
+document.querySelectorAll(".sex button").forEach((b) => b.onclick = () => { state.sex = b.dataset.sex; save(); renderList(); });
+$("weight").addEventListener("input", () => { save(); renderList(); });
+
+// ---------- 初期化 ----------
+load();
+applyPreset();
+renderDrinks();
+renderSizes();
+update();
+renderList();
+</script>
+</body>
+</html>
